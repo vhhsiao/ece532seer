@@ -4,6 +4,7 @@ from sklearn import linear_model
 from sklearn import svm
 from sklearn import impute
 from sklearn import metrics
+from sklearn.model_selection import GridSearchCV
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -53,18 +54,6 @@ def fit_lasso_models(A, d, la_array):
     _,coefs,_ = linear_model.lasso_path(A, d, alphas=la_array)
     return coefs
 
-# Trains SVM on a grid of lambdas, gammas
-def fit_svm_models(A, d, la_array, ga_array):
-    n_lambdas = len(la_array)
-    n_gammas = len(ga_array)
-    models = {l:{} for l in range(n_lambdas)}
-    for i in range(n_lambdas):
-        print("lambda {idx}: {l}".format(idx=i, l=la_array[i]))
-        for j in range(n_gammas):
-            print("gamma {idx}: {g}".format(idx=j, g=ga_array[j]))
-            mdl = svm.SVC(C=la_array[i], gamma=ga_array[j])
-            models[i][j] = mdl.fit(A, d)
-    return models
 
 seer = loadmat("/Volumes/HSIAO USB/SEER/seer_data.mat")
 print([key for key in seer])
@@ -184,37 +173,24 @@ for j in range(cases):
         print("AUCs {r}: {auc}".format(r=alg, auc=aucs.round(3)))
         print("Best Lambda Index: {l}".format(l=best_lambda_idx))
 
-    # SVM
-    print("Fitting model SVM")
-    lam_values = np.logspace(-2, 2, 3)
-    SVM_models = fit_svm_models(At, np.ravel(bt), lam_values, gammas)
-    print("Calculating performance for SVM")
-    best_auc = 0
-    best_lambda_idx = 0
-    best_gamma_idx = 0
-    for i in range(len(lambdas)):
-        for j in range(len(gammas)):
-            scores = SVM_models[i][j].decision_function(Av1)
-            auc = metrics.roc_auc_score(bv1, scores)
-            if auc > best_auc:
-                best_auc = auc
-                best_lambda_idx = i
-                best_gamma_idx = j
-    final_mdl = SVM_models[best_lambda_idx][best_gamma_idx]
-    final_errors = errors(bv2, final_mdl.predict(Av2))
-    final_scores = final_mdl.decision_function(Av2)
-    final_error_rate = np.average(final_errors)
-    pred_errors['svm'][j] = final_error_rate
-    final_aucs['svm'][j] = metrics.roc_auc_score(bv2, final_scores)
-    print("Final error rate {r}: {er}".format(r=alg, er=final_error_rate.round(3)))
-    print("AUCs {r}: {auc}".format(r=alg, auc=aucs.round(3)))
-    print("Best Lambda Index: {l}".format(l=best_lambda_idx))
-    print("Best Gamma Index: {g}".format(g=best_gamma_idx))
-
     print("-----------------------------------------")
+
+
 
 for alg in ['lasso', 'ridge']:
     print("Average {r} prediction error rate: {er}".format(r=alg, er=np.average(pred_errors[alg]).round(3)))
     print("Average {r} AUC: {auc}".format(r=alg, auc=np.average(final_aucs[alg]).round(3)))
+
+# Use Grid Search to find parameters for SVM
+print("\n\n-----------------------------------------")
+print("Now training SVM using 10-fold cross validation")
+parameters = {'C': np.logspace(-2, 2, 3), 'gamma': gammas}
+svc = svm.SVC()
+clf = GridSearchCV(svc, param_grid=parameters, scoring="roc_auc", cv=10, n_jobs=2)
+clf.fit(X, np.ravel(y))
+print(clf.cv_results_)
+print(clf.best_score_)
+print(clf.best_params_)
+
 
 
