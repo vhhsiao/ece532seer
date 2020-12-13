@@ -65,15 +65,24 @@ seer_data.size(seer_data.CSTumorSize20042015 == 990) = 0; % microsoft focus/foci
 seer_data.race_white = seer_data.RaceRecodeWBAIAPI == "White";
 seer_data.race_black = seer_data.RaceRecodeWBAIAPI == "Black";
 seer_data.race_api = seer_data.RaceRecodeWBAIAPI == "Asian or Pacific Islander";
-seer_data.race_aian = seer_data.RaceRecodeWBAIAPI == "American Indian/Alaska Native";
+seer_data.race_asian = seer_data.RaceRecodeWBAIAPI == "American Indian/Alaska Native";
 
 %% Generate outcome variable
 seer_data.ten_year_mortality = seer_data.CODToSiteRecode == "Thyroid" & seer_data.SurvivalMonths < 120;
 seer_data.five_year_mortality = seer_data.CODToSiteRecode == "Thyroid" & seer_data.SurvivalMonths < 60;
 
 %% Impute missing data values
-input_vars = ["age", "sex", "t", "n", "m", "regional_nodes", "extent", "size", "race_white", "race_black", "race_api", "race_aian"];
-seer_input = seer_data(:,input_vars);
+input_vars = ["age", "sex", "t", "n", "m", "regional_nodes", "extent", "size", "race_white", "race_black", "race_api", "race_asian"];
+seer_input = seer_data{:,input_vars};
+seer_input = [ones(size(seer_input,1),1), seer_input];
+seer_ten_year_mortality = seer_data.ten_year_mortality;
+
+outcome = seer_data.ten_year_mortality;
+oucome_svm = outcome;
+outcome_svm(outcome == 0) = -1;
+outcome_svm(outcome == 1) = 1;
+
+save('seer_data', 'seer_input', 'seer_ten_year_mortality')
 
 %% Data Preprocessing
 % TODO: SMOTE algorithm
@@ -81,9 +90,7 @@ seer_input = seer_data(:,input_vars);
 %% Split into train/test sets
 % TODO: validate prospectively? Use data year to split up test and
 % training.
-outcome = seer_data.ten_year_mortality;
-oucome_svm = outcome;
-outcome_svm(outcome == 0) = -1;
+
 [test_idx, train_idx] = crossvalind('Holdout', (size(seer_input,1)), 0.3);
 seer_input_train = seer_input(train_idx,:);
 seer_outcome_train = outcome(train_idx);
