@@ -115,6 +115,6 @@ for j in range(cases):
     print("AUCs: {auc}".format(auc=aucs.round(3)))
     print("Best Lambda Index: {l}".format(l=best_nneuron_idx))
 
-    print("Average MLP prediction error rate: {er}".format(er=np.average(pred_errors).round(3)))
-    print("Average MLP AUC: {auc}".format(auc=np.average(final_aucs).round(3)))
+print("Average MLP prediction error rate: {er}".format(er=np.average(pred_errors).round(3)))
+print("Average MLP AUC: {auc}".format(auc=np.average(final_aucs).round(3)))
 
