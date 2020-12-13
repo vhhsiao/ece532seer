@@ -95,14 +95,6 @@ holdoutindices = [[1,2],[2,3],[3,4],[4,5],[5,6],[7,8],[9,10],[10,1]]
 
 cases = len(holdoutindices)
 
-## Grid of parameters to try
-lambdas = np.logspace(-2, 10, num=5)
-
-gamma_base = 1/(13 * X.var())
-print("gamma_base")
-print(gamma_base)
-gammas = np.logspace(-0.5, 1, num=3, base=gamma_base)
-
 ##  10-fold CV
 
 # Initiate the quantities you want to measure before looping
@@ -146,7 +138,8 @@ for j in range(cases):
     print("Validation 1: {v1_i} | Validation 2: {v2_i} | training_indices: {trn_i}".format(v1_i=v1_ind, v2_i=v2_ind, trn_i=trn_ind))
 
     # Regression Models
-    lam_vals = lambdas
+    ## Grid of parameters to try
+    lam_vals = np.logspace(-2, 10, num=5)
 
     print("Training lasso models...")
     W_lasso = fit_lasso_models(At, bt, lam_vals)[0]
@@ -186,14 +179,15 @@ for j in range(cases):
 
     # SVM
     print("Fitting model SVM")
-    lam_values = np.logspace(-2, 2, 3)
-    SVM_models = fit_svm_models(At, np.ravel(bt), lam_values, gammas)
+    svm_lambdas = [1, 0.1]
+    svm_gammas = [0.003, 1]
+    SVM_models = fit_svm_models(At, np.ravel(bt), svm_lambdas, svm_gammas)
     print("Calculating performance for SVM")
     best_auc = 0
     best_lambda_idx = 0
     best_gamma_idx = 0
-    for i in range(len(lambdas)):
-        for j in range(len(gammas)):
+    for i in range(len(svm_lambdas)):
+        for j in range(len(svm_gammas)):
             scores = SVM_models[i][j].decision_function(Av1)
             auc = metrics.roc_auc_score(bv1, scores)
             if auc > best_auc:
@@ -206,8 +200,8 @@ for j in range(cases):
     final_error_rate = np.average(final_errors)
     pred_errors['svm'][j] = final_error_rate
     final_aucs['svm'][j] = metrics.roc_auc_score(bv2, final_scores)
-    print("Final error rate {r}: {er}".format(r=alg, er=final_error_rate.round(3)))
-    print("AUCs {r}: {auc}".format(r=alg, auc=aucs.round(3)))
+    print("Final error rate {r}: {er}".format(r='svm', er=final_error_rate.round(3)))
+    print("AUCs {r}: {auc}".format(r='svm', auc=aucs.round(3)))
     print("Best Lambda Index: {l}".format(l=best_lambda_idx))
     print("Best Gamma Index: {g}".format(g=best_gamma_idx))
 

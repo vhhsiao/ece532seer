@@ -85,33 +85,30 @@ outcome_svm(outcome == 1) = 1;
 save('seer_data', 'seer_input', 'seer_ten_year_mortality')
 
 %% Data Preprocessing
-% TODO: SMOTE algorithm
+% median impute
+n = size(seer_input, 1);
+%seer_input = fillmissing(seer_input, 'movmedian', n);
 
 %% Split into train/test sets
-% TODO: validate prospectively? Use data year to split up test and
-% training.
-
 [test_idx, train_idx] = crossvalind('Holdout', (size(seer_input,1)), 0.3);
 seer_input_train = seer_input(train_idx,:);
 seer_outcome_train = outcome(train_idx);
 seer_input_test = seer_input(test_idx,:);
 seer_outcome_test = outcome(test_idx);
 
-%% Logistic Regression 
-fprintf("Logistic Regression")
-mdl_logistic_regression = fitclinear(seer_input_train, seer_outcome_train, 'Learner', 'logistic', 'Regularization', 'lasso', 'Lambda', 0, 'KFold', 10);
-[pred, score] = kfoldPredict(mdl_logistic_regression);
-[fpr, tpr, t, train_auc] = perfcurve(seer_outcome_train, score(:,2), 1);
-train_auc
-
-%% Logistic Regression with ElasticNet Regularization
-
 %% SVM
 fprintf("SVM")
 seer_outcome_train_svm = outcome_svm(train_idx);
-mdl_svm = fitclinear(seer_input_train, seer_outcome_train_svm, 'Learner', 'svm', 'KFold', 10);
-[pred, score] = kfoldPredict(mdl_svm);
+%mdl_svm = fitclinear(seer_input_train, seer_outcome_train_svm, 'Learner', 'svm', 'KFold', 10);
+[mdl_svm,FitInfo,HyperparameterOptimizationResults] = fitckernel(seer_input_train,seer_outcome_train_svm,'OptimizeHyperparameters','auto',...
+    'HyperparameterOptimizationOptions',struct('AcquisitionFunctionName','expected-improvement-plus'));
+[pred, score] = predict(mdl_svm, seer_input_train);
 [fpr, tpr, t, train_auc] = perfcurve(seer_outcome_train, score(:,2), 1);
 train_auc
 
+[pred, score] = predict(mdl_svm, seer_input_test);
+[fpr, tpr, t, test_auc] = perfcurve(seer_outcome_test, score(:,2), 1);
+test_auc
+
 %% ANN
+
