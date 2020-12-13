@@ -4,6 +4,7 @@ from sklearn import linear_model
 from sklearn import svm
 from sklearn import impute
 from sklearn import metrics
+from sklearn.model_selection import GridSearchCV
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -14,20 +15,6 @@ def decision(vec):
 def errors(d, d_pred):
     err = np.where(d_pred!=d, 1, 0)
     return err
-
-def residual_norm(A, w, d):
-    resid = A @ w - d
-    resid_norm = np.linalg.norm(resid, 2)
-    return resid_norm
-
-# Helper functions for Question 2
-def residual_norms(A, W, d):
-    resid_norms = np.zeros(len(lambdas))
-    for i in range(len(lambdas)):
-        w = W[:,i]
-        resid = residual_norm(A, w, d)
-        resid_norms[i] = resid
-    return resid_norms
 
 # Returns the sparsity of w (number of nonzero entries in w)
 def sparsity(w):
@@ -53,18 +40,6 @@ def fit_lasso_models(A, d, la_array):
     _,coefs,_ = linear_model.lasso_path(A, d, alphas=la_array)
     return coefs
 
-# Trains SVM on a grid of lambdas, gammas
-def fit_svm_models(A, d, la_array, ga_array):
-    n_lambdas = len(la_array)
-    n_gammas = len(ga_array)
-    models = {l:{} for l in range(n_lambdas)}
-    for i in range(n_lambdas):
-        print("lambda {idx}: {l}".format(idx=i, l=la_array[i]))
-        for j in range(n_gammas):
-            print("gamma {idx}: {g}".format(idx=j, g=ga_array[j]))
-            mdl = svm.SVC(C=la_array[i], gamma=ga_array[j])
-            models[i][j] = mdl.fit(A, d)
-    return models
 
 seer = loadmat("/Volumes/HSIAO USB/SEER/seer_data.mat")
 print([key for key in seer])
@@ -177,12 +152,8 @@ for j in range(cases):
         print("AUCs {r}: {auc}".format(r=alg, auc=aucs.round(3)))
         print("Best Lambda Index: {l}".format(l=best_lambda_idx))
 
-    # SVM
-    print("Fitting model SVM")
-    svm_lambdas = [1, 0.1]
-    svm_gammas = [0.003, 1]
-    SVM_models = fit_svm_models(At, np.ravel(bt), svm_lambdas, svm_gammas)
-    print("Calculating performance for SVM")
+    #SVM
+    print("Calculating performance for svm")
     best_auc = 0
     best_lambda_idx = 0
     best_gamma_idx = 0
@@ -205,10 +176,21 @@ for j in range(cases):
     print("Best Lambda Index: {l}".format(l=best_lambda_idx))
     print("Best Gamma Index: {g}".format(g=best_gamma_idx))
 
-    print("-----------------------------------------")
 
 for alg in ['lasso', 'ridge']:
     print("Average {r} prediction error rate: {er}".format(r=alg, er=np.average(pred_errors[alg]).round(3)))
     print("Average {r} AUC: {auc}".format(r=alg, auc=np.average(final_aucs[alg]).round(3)))
+
+# Use Grid Search to find parameters for SVM
+print("\n\n-----------------------------------------")
+print("Now training SVM using 10-fold cross validation")
+parameters = {'C': np.logspace(-2, 2, 3), 'gamma': gammas}
+svc = svm.SVC()
+clf = GridSearchCV(svc, param_grid=parameters, scoring="roc_auc", cv=10, n_jobs=2)
+clf.fit(X, np.ravel(y))
+print(clf.cv_results_)
+print(clf.best_score_)
+print(clf.best_params_)
+
 
 
